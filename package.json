@@ -1,0 +1,36 @@
+{
+  "name": "@rompot/wppconnect",
+  "version": "0.0.1",
+  "description": "wppconnection version rompot",
+  "main": "dist/index.js",
+  "scripts": {
+    "example": "ts-node-dev -r tsconfig-paths/register example/index.ts",
+    "dev": "ts-node-dev -r tsconfig-paths/register example/index.ts",
+    "build": "npm i && npm run clean && tsc && tsc-alias",
+    "clean": "rimraf lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Laxeder/wppconnect.git"
+  },
+  "keywords": [
+    "whatsapp-api",
+    "whatsapp-bot"
+  ],
+  "author": "Laxeder",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Laxeder/wppconnect/issues"
+  },
+  "homepage": "https://github.com/Laxeder/wppconnect#readme",
+  "dependencies": {
+    "@wppconnect-team/wppconnect": "1.24.0",
+    "rompot": "1.4.8"
+  },
+  "devDependencies": {
+    "ts-alias": "0.0.7",
+    "ts-node-dev": "2.0.0",
+    "tsconfig-paths": "4.2.0",
+    "typescript": "5.0.4"
+  }
+}
