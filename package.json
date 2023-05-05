@@ -25,7 +25,8 @@
   "homepage": "https://github.com/Laxeder/wppconnect#readme",
   "dependencies": {
     "@wppconnect-team/wppconnect": "1.24.0",
-    "rompot": "1.4.8"
+    "rompot": "1.4.8",
+    "winston": "3.8.2"
   },
   "devDependencies": {
     "ts-alias": "0.0.7",
