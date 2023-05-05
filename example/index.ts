@@ -19,7 +19,7 @@ client.on("close", () => {
 });
 
 client.on("qr", (qr: string) => {
-  console.log("QR Gerado:", qr);
+  console.log("Escaneie o QR Code para autenticar o bot");
 });
 
 client.on("connecting", () => {
