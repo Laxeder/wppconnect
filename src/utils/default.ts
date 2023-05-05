@@ -1,18 +1,32 @@
-import { CreateOptions } from "@wppconnect-team/wppconnect";
+import winston, { createLogger, LoggerOptions } from "winston";
 
-export const DEFAULT_CLIENT_OPTIONS: CreateOptions = {
+import { WPPConnectOption } from "../types/default";
+
+export const LOGGER = (options: Partial<LoggerOptions>) => {
+  const logger = createLogger({
+    transports: [
+      new winston.transports.Console({
+        silent: true,
+      }),
+    ],
+    exitOnError: false,
+  });
+
+  return logger;
+};
+
+export const DEFAULT_CLIENT_OPTIONS: WPPConnectOption = {
+  timesForReconnect: 12,
   session: "session",
-  headless: true,
   devtools: false,
+  logger: LOGGER({}),
   useChrome: true,
   debug: false,
   logQR: true,
-  browserWS: "",
-  browserArgs: [""],
-  puppeteerOptions: {},
-  disableWelcome: false,
-  updatesLog: true,
-  autoClose: 60000,
+  disableWelcome: true,
+  updatesLog: false,
+  autoClose: 300000,
+  waitForLogin: false,
   tokenStore: "file",
   folderNameToken: "./tokens",
 };
