@@ -1,11 +1,13 @@
 import { BotEvents, Chat, ChatStatus, ConnectionStatus, getError, IAuth, IBot, injectJSON, Media, Message, MultiFileAuthState, PollMessage, User, UserAction, UserEvent, WaitCallBack } from "rompot";
-import wppconnect, { create, Whatsapp, CreateOptions } from "@wppconnect-team/wppconnect";
+import { create, Whatsapp } from "@wppconnect-team/wppconnect";
 import { WAChat, WAUser } from "rompot/lib/wa/WAModules";
 import { WAChats, WAUsers } from "rompot/lib/wa/WATypes";
 import pino from "pino";
 
-import { DEFAULT_CLIENT_OPTIONS } from "@utils/default";
 import { getID, isGroupId, isPvId, replaceID } from "@utils/generic";
+import { DEFAULT_CLIENT_OPTIONS } from "@utils/default";
+import { WPPConnectOption } from "../types/default";
+import ConfigWPPEvents from "./Events";
 // import { WhatsAppConvertMessage } from "./WAConvertMessage";
 
 export default class WPPConnect implements IBot {
@@ -16,7 +18,8 @@ export default class WPPConnect implements IBot {
 
   public logger: any = pino({ level: "silent" });
   public auth: IAuth = new MultiFileAuthState("./session");
-  public config: CreateOptions = DEFAULT_CLIENT_OPTIONS;
+  public config: WPPConnectOption = DEFAULT_CLIENT_OPTIONS;
+  public configEvents: ConfigWPPEvents = new ConfigWPPEvents(this);
 
   public id: string = "";
   public sessionName: string = "";
@@ -27,9 +30,8 @@ export default class WPPConnect implements IBot {
   public polls: { [id: string]: PollMessage } = {};
   public sendedMessages: { [id: string]: Message } = {};
 
-  constructor(config?: Partial<CreateOptions>, sessionName?: string) {
+  constructor(config?: Partial<WPPConnectOption>) {
     this.config = { ...DEFAULT_CLIENT_OPTIONS, ...config };
-    this.sessionName = sessionName || "";
   }
 
   public async connect(auth?: string | IAuth): Promise<void> {
@@ -42,41 +44,10 @@ export default class WPPConnect implements IBot {
         // }
 
         this.client = await create({
-          session: this.sessionName,
-          catchQR: (base64Qrimg, asciiQR) => {
-            this.ev.emit("qr", base64Qrimg);
-          },
-          statusFind: (statusSession, session) => {
-            console.log("Status Session: ", statusSession);
-
-            if (statusSession == "isLogged") {
-              this.ev.emit("open", { isNewLogin: false });
-            }
-
-            if (statusSession == "notLogged" || statusSession == "browserClose") {
-              if (this.status == "online") {
-                this.status = "offline";
-
-                this.ev.emit("close", {});
-              }
-            }
-
-            if (statusSession == "desconnectedMobile") {
-              this.status = "offline";
-
-              this.ev.emit("closed", {});
-            }
-          },
-          onLoadingScreen: (percent, message) => {
-            console.log("LOADING_SCREEN", percent, message);
-          },
-
-          debug: false, // Opens a debug session
-          logQR: true, // Logs QR automatically in terminal
-
-          tokenStore: "file", // Define how work with tokens, that can be a custom interface
-          folderNameToken: "./tokens", //folder name when saving tokens
+          ...this.config,
         });
+
+        this.configEvents.configure();
       } catch (err) {
         this.ev.emit("error", getError(err));
       }
@@ -636,13 +607,9 @@ export default class WPPConnect implements IBot {
     // if (!(message instanceof Message)) {
     //   message = await this.wcb.waitCall(() => new WhatsAppConvertMessage(this, message).get());
     // }
-
     // if (typeof message != "object" || !message || !!!message.id) return;
-
     // message.apiSend = true;
-
     // this.sendedMessages[message.id] = message;
-
     // await this.saveSendedMessages();
   }
 
