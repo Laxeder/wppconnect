@@ -394,29 +394,30 @@ export default class WPPConnect implements IBot {
   public async getChatAdmins(chat: Chat): Promise<WAUsers> {
     const users: WAUsers = {};
 
-    if (!this.chats.hasOwnProperty(chat.id)) return users;
+    const wins = await this.wcb.waitCall(() => this.client.getGroupAdmins(getID(chat.id)));
 
-    for (const id in this.chats[chat.id].users) {
-      const user = this.chats[chat.id].users[id];
+    if (!wins) return users;
 
-      if (user.isAdmin || user.isLeader) {
-        users[id] = user;
-      }
-    }
+    await Promise.all(
+      wins.map(async (win) => {
+        const user = await this.readUser(new User(replaceID(id)));
+
+        users[user.id] = user;
+      })
+    );
 
     return users;
   }
 
   public async getChatLeader(chat: Chat): Promise<WAUser> {
-    let user: WAUser = new WAUser("");
+    //TODO: obter lider
+    const admins = await this.getChatAdmins(chat);
 
-    if (!this.chats.hasOwnProperty(chat.id)) return user;
+    const ids = Object.keys(admins);
 
-    for (const id in this.chats[chat.id].users) {
-      if (this.chats[chat.id].users[id].isLeader) {
-        user = this.chats[chat.id].users[id];
-      }
-    }
+    if (ids.length == 0) return new WAUser("");
+
+    const user = admins[ids[0]];
 
     return user;
   }
