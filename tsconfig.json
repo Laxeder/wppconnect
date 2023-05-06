@@ -18,6 +18,7 @@
       "@default/*": ["./src/default/*"],
       "@modules/*": ["./src/modules/*"],
       "@config/*": ["./src/config/*"],
+      "@enums/*": ["./src/enums/*"],
       "@utils/*": ["./src/utils/*"],
       "@types/*": ["./src/types/*"],
       "@api/*": ["./src/api/*"]
