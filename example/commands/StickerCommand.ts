@@ -1,4 +1,4 @@
-import { Command, MediaMessage, Message, StickerMessage } from "rompot";
+import { Command, MediaMessage, Message, StickerMessage, VideoMessage } from "rompot";
 
 export class StickerCommand extends Command {
   tags: string[] = ["sticker"];
@@ -13,6 +13,10 @@ export class StickerCommand extends Command {
     }
 
     const msg = new StickerMessage(message.chat, await mediaMessage.getStream());
+
+    if (mediaMessage instanceof VideoMessage || mediaMessage.isGIF) {
+      msg.isGIF = true;
+    }
 
     await this.client.send(msg);
   }
