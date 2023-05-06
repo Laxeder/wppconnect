@@ -1,7 +1,5 @@
-import { StatusFind } from "@wppconnect-team/wppconnect";
-import { Message } from "rompot";
-
 import WPPConnect from "@api/WPPConnect";
+import WPPMessage from "@api/WPPMessage";
 
 import { replaceID } from "@utils/generic";
 
@@ -31,30 +29,8 @@ export default class ConfigWPPEvents {
     };
   }
 
-  public configOnAnyMessage() {
-    this.wpp.client.onAnyMessage(async (message) => {
-      try {
-        console.log(message)
-        
-        const chatId = replaceID(message.chatId);
-
-        const msg = new Message(chatId, "");
-
-        this.wpp.ev.emit("message", msg);
-      } catch (err) {
-        this.wpp.ev.emit("error", err);
-      }
-    });
-  }
-
-  public configStatusUpdate(configure: boolean = false) {
-    this.wpp.client.statusFind = async (status: StatusFind, session: string) => {
-      console.log("Status Session: ", status);
-
-      if (status == "notLogged") {
-        this.wpp.ev.emit("connecting", {});
-      }
-
+  public configStatusUpdate() {
+    this.wpp.client.statusFind = async (status) => {
       if (status == "inChat") {
         this.wpp.status = "online";
 
@@ -63,7 +39,6 @@ export default class ConfigWPPEvents {
         await this.wpp.readChats();
         await this.wpp.readUsers();
         await this.wpp.readPolls();
-        await this.wpp.readSendedMessages();
 
         this.wpp.ev.emit("open", { isNewLogin: false });
       }
@@ -82,6 +57,32 @@ export default class ConfigWPPEvents {
         }
       }
     };
+  }
+
+  public configOnAnyMessage() {
+    this.wpp.client.onAnyMessage(async (msg) => {
+      try {
+        if (!!!msg) return;
+
+        const { message, isValid } = await WPPMessage.Read(this.wpp, msg);
+
+        if (!isValid) return;
+        if (!!!message.chat.id) return;
+        if (message.chat.id.includes("status@broadcast")) return;
+
+        if (this.wpp.users[message.user.id]?.name != message.user.name) {
+          await this.wpp.addUser(message.user);
+        }
+
+        if (this.wpp.chats[message.chat.id]?.name != message.chat.name) {
+          await this.wpp.addChat(message.chat);
+        }
+
+        this.wpp.ev.emit("message", message);
+      } catch (err) {
+        this.wpp.ev.emit("error", err);
+      }
+    });
   }
 
   // public configContactsUpdate() {
