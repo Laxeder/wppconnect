@@ -34,7 +34,11 @@ export default class WPPConnect implements IBot {
   //@ts-ignore
   public client: Whatsapp = {};
   public ev: BotEvents = new BotEvents();
-  public wcb: WaitCallBack = new WaitCallBack((err: any) => this.ev.emit("error", getError(err)));
+  public wcb: WaitCallBack = new WaitCallBack((err: any) => {
+    if (typeof err == "object" && err.erro && err.text) err = err.text;
+
+    this.ev.emit("error", getError(err));
+  });
 
   public auth: IAuth = new MultiFileAuthState("./session");
   public config: WPPConnectOption = DEFAULT_CLIENT_OPTIONS;
@@ -47,7 +51,6 @@ export default class WPPConnect implements IBot {
   public users: WAUsers = {};
   public chats: WAChats = {};
   public polls: { [id: string]: PollMessage } = {};
-  public sendedMessages: { [id: string]: Message } = {};
 
   constructor(config?: Partial<WPPConnectOption>) {
     this.config = { ...DEFAULT_CLIENT_OPTIONS, ...config };
@@ -123,14 +126,6 @@ export default class WPPConnect implements IBot {
   }
 
   /**
-   * * Salva as mensagens enviadas salvas
-   * @param messages Mensagens enviadas
-   */
-  public async saveSendedMessages(messages: any = this.sendedMessages) {
-    await this.auth.set(`sendedMessages`, messages);
-  }
-
-  /**
    * * Obtem os chats salvos
    */
   public async readChats() {
@@ -186,52 +181,20 @@ export default class WPPConnect implements IBot {
   }
 
   /**
-   * * Obtem as mensagem enviadas salvas
-   */
-  public async readSendedMessages() {
-    const messages: WAUsers = (await this.auth.get(`sendedMessages`)) || {};
-
-    for (const id of Object.keys(messages || {})) {
-      const msg = messages[id];
-
-      if (!!!msg) continue;
-
-      this.sendedMessages[id] = injectJSON(msg, new Message("", ""));
-    }
-  }
-
-  /**
    * * Lê o chat
    * @param chat Sala de bate-papo
    */
-  public async readChat(chat: any) {
-    chat.id = replaceID(chat.id || chat.newJID);
+  public async readChat(chat: Chat) {
+    const newChat = new WAChat(replaceID(chat?.id || ""), isGroupId(chat?.id || "") ? "group" : "pv");
 
-    const newChat = this.chats[chat.id] || new WAChat(chat.id, chat.name || chat.verifiedName || chat.notify || chat.subject);
+    const metadata = await this.wcb.waitCall(() => this.client.getChatById(getID(chat.id)));
 
-    // if (newChat.id.includes("@g")) {
-    //   if (!!!chat?.participants) {
-    //     const metadata = await this.wcb.waitCall(() => this.client.groupMetadata(getID(newChat.id)));
+    if (!!metadata) {
+      if (!!metadata.name) newChat.name = metadata.name;
+      if (!!metadata.groupMetadata?.desc) newChat.description = metadata.groupMetadata.desc;
+    }
 
-    //     if (!!metadata) chat = metadata;
-
-    //     await Promise.all(
-    //       (chat?.participants || []).map(async (p: any) => {
-    //         const user = this.users[replaceID(p.id)] || new WAUser(replaceID(p.id));
-
-    //         user.isAdmin = p.admin == "admin" || p.isAdmin || p.isSuperAdmin || false;
-    //         user.isLeader = p.admin == "superadmin" || p.isSuperAdmin || false;
-
-    //         newChat.users[user.id] = user;
-    //       })
-    //     );
-    //   }
-    // }
-
-    newChat.name = chat.subject || chat.name || chat.verifiedName || chat.notify;
-    newChat.description = chat?.desc || chat.description || "";
-
-    await this.addChat(newChat);
+    if (!!newChat.id) await this.addChat(newChat);
 
     return newChat;
   }
@@ -241,10 +204,10 @@ export default class WPPConnect implements IBot {
    * @param user Usuário
    * @param save Salva usuário lido
    */
-  public async readUser(user: any) {
-    const newUser = new WAUser(user?.id || user?.newJID || user || "", user?.name || user?.verifiedName || user?.notify || "");
+  public async readUser(user: User) {
+    const newUser = new WAUser(user?.id || "", user?.name || "");
 
-    await this.addUser(newUser);
+    if (!!newUser.id) await this.addUser(newUser);
 
     return newUser;
   }
@@ -626,30 +589,6 @@ export default class WPPConnect implements IBot {
 
   //! ******************************* MESSAGE *******************************
 
-  /**
-   * * Adiciona uma mensagem na lista de mensagens enviadas
-   * @param message Mensagem que será adicionada
-   */
-  public async addSendedMessage(message: Message) {
-    message.apiSend = true;
-
-    this.sendedMessages[message.id] = message;
-
-    await this.saveSendedMessages();
-  }
-
-  /**
-   * * Remove uma mensagem da lista de mensagens enviadas
-   * @param message Mensagem que será removida
-   */
-  public async removeMessageIgnore(message: Message) {
-    if (this.sendedMessages.hasOwnProperty(message.id)) {
-      delete this.sendedMessages[message.id];
-    }
-
-    await this.saveSendedMessages();
-  }
-
   public async readMessage(message: Message): Promise<void> {
     return await this.changeChatStatus(message.chat, "reading");
   }
@@ -691,12 +630,12 @@ export default class WPPConnect implements IBot {
       await this.savePolls(this.polls);
     }
 
-    await this.addSendedMessage(msgRes);
-
     return msgRes;
   }
 
   public async downloadStreamMessage(media: Media): Promise<Buffer> {
-    return Buffer.from((await this.wcb.waitCall(() => this.client.downloadMedia(media.stream))) || "", "base64");
+    const base64 = await this.wcb.waitCall(() => this.client.downloadMedia(media.stream));
+
+    return Buffer.from(base64 || "");
   }
 }
