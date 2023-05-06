@@ -1,3 +1,5 @@
+import { Message } from "@wppconnect-team/wppconnect";
+
 /**
  * * Replace ID content
  * @param id
@@ -36,4 +38,30 @@ export function isGroupId(id: string): boolean {
  */
 export function isPvId(id: string): boolean {
   return !id.includes("@") || id.includes("@c") || id.includes("@s");
+}
+
+/** @returns ID do usuário que enviou a mensagem */
+export function getUserFromMessage(message: Message) {
+  if (typeof message.sender == "string") {
+    var id = `${message.sender}`;
+  } else if (typeof message.sender.id == "string") {
+    var id = `${message.sender.id}`;
+  } else {
+    var id = `${message.sender.id._serialized}`;
+  }
+
+  return replaceID(id);
+}
+
+/** @returns ID da sala de bate-papo que foi enviado a mensagem */
+export function getChatFromMessage(message: Message) {
+  const chat: any = message.chatId;
+
+  if (typeof chat == "string") {
+    var id = `${chat}`;
+  } else {
+    var id = `${chat?._serialized}`;
+  }
+
+  return replaceID(id);
 }
