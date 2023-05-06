@@ -5,7 +5,7 @@
 export function replaceID(id: string): string {
   id = String(`${id}`).replace(/:(.*)@/, "@");
 
-  if (id.includes("@s")) id = id.split("@")[0];
+  if (id.includes("@s") || id.includes("@c")) id = id.split("@")[0];
 
   return id.trim();
 }
