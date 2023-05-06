@@ -1,14 +1,34 @@
-import { BotEvents, Chat, ChatStatus, ConnectionStatus, getError, IAuth, IBot, injectJSON, Media, Message, MultiFileAuthState, PollMessage, User, UserAction, UserEvent, WaitCallBack } from "rompot";
+import type { WPPConnectOption } from "../types/default";
+import type { WAChats, WAUsers } from "../types/modules";
+
+import {
+  BotEvents,
+  Chat,
+  ChatStatus,
+  ConnectionStatus,
+  getError,
+  IAuth,
+  IBot,
+  injectJSON,
+  Media,
+  Message,
+  MultiFileAuthState,
+  PollMessage,
+  ReactionMessage,
+  User,
+  UserAction,
+  UserEvent,
+  WaitCallBack,
+  // AudioMessage,
+} from "rompot";
 import { create, Whatsapp } from "@wppconnect-team/wppconnect";
-import { WAChat, WAUser } from "rompot/lib/wa/WAModules";
-import { WAChats, WAUsers } from "rompot/lib/wa/WATypes";
-import pino from "pino";
+
+import MessageTranspiler from "@api/TranspileMessage";
+import { WAChat, WAUser } from "@api/Modules";
+import ConfigWPPEvents from "@api/Events";
 
 import { getID, isGroupId, isPvId, replaceID } from "@utils/generic";
 import { DEFAULT_CLIENT_OPTIONS } from "@utils/default";
-import { WPPConnectOption } from "../types/default";
-import ConfigWPPEvents from "./Events";
-// import { WhatsAppConvertMessage } from "./WAConvertMessage";
 
 export default class WPPConnect implements IBot {
   //@ts-ignore
@@ -16,7 +36,6 @@ export default class WPPConnect implements IBot {
   public ev: BotEvents = new BotEvents();
   public wcb: WaitCallBack = new WaitCallBack((err: any) => this.ev.emit("error", getError(err)));
 
-  public logger: any = pino({ level: "silent" });
   public auth: IAuth = new MultiFileAuthState("./session");
   public config: WPPConnectOption = DEFAULT_CLIENT_OPTIONS;
   public configEvents: ConfigWPPEvents = new ConfigWPPEvents(this);
@@ -43,11 +62,18 @@ export default class WPPConnect implements IBot {
         //   auth = new LocalAuth(auth);
         // }
 
+        this.ev.emit("connecting", {});
+
         this.client = await create({
           ...this.config,
         });
 
         this.configEvents.configure();
+
+        process.on("SIGINT", () => {
+          this.ev.emit("close", {});
+          this.client.close();
+        });
       } catch (err) {
         this.ev.emit("error", getError(err));
       }
@@ -400,7 +426,7 @@ export default class WPPConnect implements IBot {
 
     await Promise.all(
       wins.map(async (win) => {
-        const user = await this.readUser(new User(replaceID(id)));
+        const user = await this.readUser(new User(replaceID(win.toJid())));
 
         users[user.id] = user;
       })
@@ -469,7 +495,7 @@ export default class WPPConnect implements IBot {
       await this.wcb.waitCall(() => this.client.startTyping(getID(chat.id)));
     }
 
-    if (status == "typing") {
+    if (status == "recording") {
       await this.wcb.waitCall(() => this.client.startRecording(getID(chat.id)));
     }
   }
@@ -604,14 +630,12 @@ export default class WPPConnect implements IBot {
    * * Adiciona uma mensagem na lista de mensagens enviadas
    * @param message Mensagem que será adicionada
    */
-  public async addSendedMessage(message: any | Message) {
-    // if (!(message instanceof Message)) {
-    //   message = await this.wcb.waitCall(() => new WhatsAppConvertMessage(this, message).get());
-    // }
-    // if (typeof message != "object" || !message || !!!message.id) return;
-    // message.apiSend = true;
-    // this.sendedMessages[message.id] = message;
-    // await this.saveSendedMessages();
+  public async addSendedMessage(message: Message) {
+    message.apiSend = true;
+
+    this.sendedMessages[message.id] = message;
+
+    await this.saveSendedMessages();
   }
 
   /**
@@ -627,7 +651,7 @@ export default class WPPConnect implements IBot {
   }
 
   public async readMessage(message: Message): Promise<void> {
-    return await this.wcb.waitCall(() => this.client.sendReadStatus(getID(message.chat.id), message.id));
+    return await this.changeChatStatus(message.chat, "reading");
   }
 
   public async removeMessage(message: Message) {
@@ -639,58 +663,40 @@ export default class WPPConnect implements IBot {
   }
 
   public async addReaction(message: Message, reaction: string): Promise<void> {
-    // const reactionMessage = new ReactionMessage(message.chat, reaction, message);
-    // reactionMessage.user = message.user;
-    // const waMSG = new WhatsAppMessage(this, reactionMessage);
-    // await waMSG.refactory(reactionMessage);
-    // const msg = await this.wcb.waitCall(() => this.sock?.sendMessage(getID(message.chat.id), waMSG.message));
-    // await this.addSendedMessage(msg);
+    const reactionMessage = new ReactionMessage(message.chat, reaction, message);
+
+    await MessageTranspiler.sendMessage(this, reactionMessage);
   }
 
   public async removeReaction(message: Message): Promise<void> {
-    // const reactionMessage = new ReactionMessage(message.chat, "", message);
-    // reactionMessage.user = message.user;
-    // const waMSG = new WhatsAppMessage(this, reactionMessage);
-    // await waMSG.refactory(reactionMessage);
-    // const msg = await this.wcb.waitCall(() => this.sock?.sendMessage(getID(message.chat.id), waMSG.message));
-    // await this.addSendedMessage(msg);
+    const reactionMessage = new ReactionMessage(message.chat, "", message);
+
+    await MessageTranspiler.sendMessage(this, reactionMessage);
   }
 
   public async send(content: Message): Promise<Message> {
-    // const waMSG = new WhatsAppMessage(this, content);
-    // await waMSG.refactory(content);
+    const msgRes = await MessageTranspiler.sendMessage(this, content);
 
-    // if (waMSG.isRelay) {
-    //   const id = await this.wcb.waitCall(() => this.sock?.relayMessage(waMSG.chat, waMSG.message, { ...waMSG.options, messageId: waMSG.chat })).catch((err) => this.ev.emit("error", err));
+    //TODO: Add audio message
+    // if (msgRes instanceof AudioMessage) {
+    if (false) {
+      await this.client.stopRecoring(getID(msgRes.chat.id));
+    } else {
+      await this.client.stopTyping(getID(msgRes.chat.id));
+    }
 
-    //   if (!!id && typeof id == "string") content.id = id;
+    if (msgRes instanceof PollMessage && content instanceof PollMessage) {
+      this.polls[msgRes.id] = msgRes;
 
-    //   return content;
-    // }
+      await this.savePolls(this.polls);
+    }
 
-    // const sendedMessage = await this.wcb.waitCall(() => this.sock?.sendMessage(waMSG.chat, waMSG.message, waMSG.options)).catch((err) => this.ev.emit("error", err));
+    await this.addSendedMessage(msgRes);
 
-    // if (typeof sendedMessage == "boolean") return content;
-
-    // const msgRes = (await new WhatsAppConvertMessage(this, sendedMessage).get()) || content;
-
-    // if (msgRes instanceof PollMessage && content instanceof PollMessage) {
-    //   msgRes.options = content.options;
-    //   msgRes.secretKey = sendedMessage.message.messageContextInfo.messageSecret;
-
-    //   this.polls[msgRes.id] = msgRes;
-
-    //   await this.savePolls(this.polls);
-    // }
-
-    // await this.addSendedMessage(msgRes);
-
-    // return msgRes;
-
-    return content;
+    return msgRes;
   }
 
   public async downloadStreamMessage(media: Media): Promise<Buffer> {
-    return Buffer.from("");
+    return Buffer.from((await this.wcb.waitCall(() => this.client.downloadMedia(media.stream))) || "", "base64");
   }
 }
