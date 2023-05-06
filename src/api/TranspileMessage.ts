@@ -6,8 +6,6 @@ import { WAJS } from "@wppconnect-team/wppconnect";
 import { MessageTranspilerType } from "@enums/messages";
 import WPPConnect from "@api/WPPConnect";
 import { getID } from "@utils/generic";
-import { extractMetadata } from "@laxeder/wa-sticker/dist";
-
 export default class MessageTranspiler<M extends Message> {
   public isGif?: boolean;
   public isViewOnce?: boolean;
@@ -76,38 +74,22 @@ export default class MessageTranspiler<M extends Message> {
 
     if (this.message instanceof FileMessage) {
       this.type = MessageTranspilerType.File;
-      this.media = stream.toString("base64");
+      this.media = stream.toString();
     }
 
     if (this.message instanceof ImageMessage) {
       this.type = MessageTranspilerType.Image;
-      this.media = stream.toString("base64");
+      this.media = stream.toString();
     }
 
     if (this.message instanceof VideoMessage) {
       this.type = MessageTranspilerType.Video;
-      this.media = stream.toString("base64");
+      this.media = stream.toString();
     }
 
     if (this.message instanceof StickerMessage) {
       this.type = MessageTranspilerType.Sticker;
-
-      try {
-        await extractMetadata(stream)
-          .then((data) => {
-            if (this.message instanceof StickerMessage) {
-              this.message.pack = data["sticker-pack-name"] || "";
-              this.message.author = data["sticker-pack-publisher"] || "";
-              //   this.message.id = data["sticker-pack-id"] || this.message.id;
-            }
-          })
-          .catch((err) => {
-            this.wpp.ev.emit("error", err);
-          });
-      } catch (err) {
-        this.wpp.ev.emit("error", err);
-      }
-      this.media = stream.toString("base64");
+      this.media = stream.toString();
     }
 
     return true;
@@ -229,7 +211,7 @@ export default class MessageTranspiler<M extends Message> {
     }
 
     if (type == MessageTranspilerType.File) {
-      console.log(await wpp.wcb.waitCall(() => wpp.client.sendFile(chat, media, options)));
+      message.id = (await wpp.wcb.waitCall(() => wpp.client.sendFile(chat, content, options)))?.id;
     }
 
     if (type == MessageTranspilerType.Video) {
