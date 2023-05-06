@@ -1,8 +1,7 @@
 import { Command, MediaMessage, Message, StickerMessage } from "rompot";
 
 export class StickerCommand extends Command {
-  tags: string[] = ["s", "t", "i", "c", "k", "e", "r"];
-  reqTags: number = 1;
+  tags: string[] = ["sticker"];
   prefix: string = "/";
 
   public async execute(message: Message): Promise<void> {
