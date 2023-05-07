@@ -19,10 +19,10 @@ import {
   UserAction,
   UserEvent,
   WaitCallBack,
-  // AudioMessage,
 } from "rompot";
 import { create, Whatsapp } from "@wppconnect-team/wppconnect";
 
+import { getTokenStore, WPPFileAuth } from "@api/Auth";
 import MessageTranspiler from "@api/TranspileMessage";
 import { WAChat, WAUser } from "@api/Modules";
 import ConfigWPPEvents from "@api/Events";
@@ -45,7 +45,6 @@ export default class WPPConnect implements IBot {
   public configEvents: ConfigWPPEvents = new ConfigWPPEvents(this);
 
   public id: string = "";
-  public sessionName: string = "";
   public status: ConnectionStatus = "offline";
 
   public users: WAUsers = {};
@@ -59,16 +58,21 @@ export default class WPPConnect implements IBot {
   public async connect(auth?: string | IAuth): Promise<void> {
     return await new Promise(async (resolve, reject) => {
       try {
-        if (!!!auth) auth = String("./session");
+        if (!!!auth) auth = String(this.config.session || "");
 
-        // if (typeof auth == "string") {
-        //   auth = new LocalAuth(auth);
-        // }
+        if (typeof auth == "string") {
+          this.auth = new WPPFileAuth({ path: this.config.folderNameToken });
+        } else {
+          this.auth = auth;
+        }
+
+        const tokenStore = getTokenStore(this.auth);
 
         this.ev.emit("connecting", {});
 
         this.client = await create({
           ...this.config,
+          tokenStore,
         });
 
         this.configEvents.configure();
