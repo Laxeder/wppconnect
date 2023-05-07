@@ -26,7 +26,7 @@
   "dependencies": {
     "@laxeder/wa-sticker": "4.4.4",
     "@wppconnect-team/wppconnect": "1.24.0",
-    "rompot": "1.4.8",
+    "rompot": "1.4.9",
     "winston": "3.8.2"
   },
   "devDependencies": {
