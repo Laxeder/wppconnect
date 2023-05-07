@@ -1,22 +1,27 @@
+import { Chat, EmptyMessage, FileMessage, ImageMessage, LocationMessage, Media, Message, StickerMessage, User, VideoMessage } from "rompot";
 import * as model from "@wppconnect-team/wppconnect/dist/api/model/message";
 import { MessageType } from "@wppconnect-team/wppconnect";
-import { Chat, FileMessage, ImageMessage, Media, MediaMessage, Message, StickerMessage, User, VideoMessage } from "rompot";
+
+import WPPConnect from "@api/WPPConnect";
 
 import { getChatFromMessage, getID, getUserFromMessage, replaceID } from "@utils/generic";
-import WPPConnect from "@api/WPPConnect";
 
 export default class WPPMessage {
   public wpp: WPPConnect;
-  public wamsg: model.Message;
+  public waMsg: model.Message;
 
   public isValid: boolean = false;
   public chat: Chat = new Chat("");
   public user: User = new User("");
   public message: Message = new Message("", "");
 
-  constructor(wpp: WPPConnect, wamsg: model.Message) {
+  get waMsgAny(): any {
+    return this.waMsg;
+  }
+
+  constructor(wpp: WPPConnect, waMsg: model.Message) {
     this.wpp = wpp;
-    this.wamsg = wamsg;
+    this.waMsg = waMsg;
   }
 
   public async read() {
@@ -25,8 +30,7 @@ export default class WPPMessage {
     this.isValid = isValid;
 
     if (!isValid) {
-      //TODO: Add empty message
-      //   this.message = new EmptyMessage();
+      this.message = new EmptyMessage();
       return;
     }
 
@@ -41,49 +45,49 @@ export default class WPPMessage {
   }
 
   public valid() {
-    if (!this.wamsg) return false;
-    if (!this.wamsg.sender) return false;
+    if (!this.waMsg) return false;
+    if (!this.waMsg.sender) return false;
 
-    if (this.wamsg.type == MessageType.CHAT) return true;
-    if (this.wamsg.type == MessageType.LIST) return true;
-    if (this.wamsg.type == MessageType.AUDIO) return true;
-    if (this.wamsg.type == MessageType.IMAGE) return true;
-    if (this.wamsg.type == MessageType.VIDEO) return true;
-    if (this.wamsg.type == MessageType.VCARD) return true;
-    if (this.wamsg.type == MessageType.STICKER) return true;
-    if (this.wamsg.type == MessageType.DOCUMENT) return true;
-    if (this.wamsg.type == MessageType.LOCATION) return true;
-    if (this.wamsg.type == MessageType.MULTI_VCARD) return true;
-    if (this.wamsg.type == MessageType.LIST_RESPONSE) return true;
-    if (this.wamsg.type == MessageType.BUTTONS_RESPONSE) return true;
-    if (this.wamsg.type == MessageType.TEMPLATE_BUTTON_REPLY) return true;
+    if (this.waMsg.type == MessageType.CHAT) return true;
+    if (this.waMsg.type == MessageType.LIST) return true;
+    if (this.waMsg.type == MessageType.AUDIO) return true;
+    if (this.waMsg.type == MessageType.IMAGE) return true;
+    if (this.waMsg.type == MessageType.VIDEO) return true;
+    if (this.waMsg.type == MessageType.VCARD) return true;
+    if (this.waMsg.type == MessageType.STICKER) return true;
+    if (this.waMsg.type == MessageType.DOCUMENT) return true;
+    if (this.waMsg.type == MessageType.LOCATION) return true;
+    if (this.waMsg.type == MessageType.MULTI_VCARD) return true;
+    if (this.waMsg.type == MessageType.LIST_RESPONSE) return true;
+    if (this.waMsg.type == MessageType.BUTTONS_RESPONSE) return true;
+    if (this.waMsg.type == MessageType.TEMPLATE_BUTTON_REPLY) return true;
 
     return false;
   }
 
   public async readChat() {
-    const chatId = getChatFromMessage(this.wamsg);
+    const chatId = getChatFromMessage(this.waMsg);
     const chat = new Chat(chatId);
 
     this.chat = (await this.wpp.getChat(chat)) || chat;
 
     this.chat.id = chatId;
-    this.chat.type = this.wamsg.isGroupMsg ? "group" : "pv";
+    this.chat.type = this.waMsg.isGroupMsg ? "group" : "pv";
 
     if (this.chat.type == "pv" && this.user.id != this.wpp.id) {
-      this.chat.name = this.wamsg.sender.pushname || this.wamsg.sender.verifiedName || this.wamsg.sender.name || "";
+      this.chat.name = this.waMsg.sender.pushname || this.waMsg.sender.verifiedName || this.waMsg.sender.name || "";
     }
   }
 
   public async readUser() {
-    const userId = getUserFromMessage(this.wamsg);
+    const userId = getUserFromMessage(this.waMsg);
     const user = new User(replaceID(userId));
 
     this.user = (await this.wpp.getUser(user)) || user;
 
     this.user.id = replaceID(userId);
 
-    const name = this.wamsg.sender.pushname || this.wamsg.sender.verifiedName || this.wamsg.sender.name || "";
+    const name = this.waMsg.sender.pushname || this.waMsg.sender.verifiedName || this.waMsg.sender.name || "";
 
     if (!!name && this.user.name != name) {
       this.user.name = name;
@@ -91,21 +95,23 @@ export default class WPPMessage {
   }
 
   public async readMessage() {
+    await this.readButtonMessage();
+    await this.readListMessage();
+    await this.readLocationMessage();
     await this.readMediaMessage();
     await this.readMentionMessage();
 
-    this.message.id = this.wamsg.id;
+    this.message.id = this.waMsg.id;
     this.message.apiSend = this.message.id.includes("true");
-    this.message.text = !!this.message.text ? this.message.text : this.wamsg.body || this.wamsg.content || "";
-    this.message.fromMe = getID(this.wamsg.from) == getID(this.wpp.id);
-    this.message.timestamp = this.wamsg.timestamp;
+    this.message.fromMe = getID(this.waMsg.from) == getID(this.wpp.id);
 
-    this.readInteractiveResponse();
+    this.message.timestamp = this.waMsg.timestamp;
+    this.message.text = !!this.message.text ? this.message.text : this.waMsg.body || this.waMsg.content || "";
   }
 
   public async readMentionMessage() {
-    if (this.wamsg.quotedMsgId) {
-      const mention = await this.wpp.wcb.waitCall(() => this.wpp.client.getMessageById(this.wamsg.quotedMsgId));
+    if (this.waMsg.quotedMsgId) {
+      const mention = await this.wpp.wcb.waitCall(() => this.wpp.client.getMessageById(this.waMsg.quotedMsgId));
 
       if (!!mention) {
         const { message, isValid } = await WPPMessage.Read(this.wpp, mention);
@@ -116,44 +122,64 @@ export default class WPPMessage {
   }
 
   public async readMediaMessage() {
-    const anyMsg: any & Message = this.wamsg;
+    const media: Media = { stream: this.waMsgAny };
 
-    const media: Media = { stream: anyMsg };
-
-    if (this.wamsg.type == MessageType.DOCUMENT) {
-      this.message = new FileMessage(this.chat, anyMsg.caption || "", media);
+    if (this.waMsg.type == MessageType.DOCUMENT) {
+      this.message = new FileMessage(this.chat, this.waMsgAny.caption || "", media);
     }
 
-    if (this.wamsg.type == MessageType.IMAGE) {
-      this.message = new ImageMessage(this.chat, anyMsg.caption || "", media);
+    if (this.waMsg.type == MessageType.IMAGE) {
+      this.message = new ImageMessage(this.chat, this.waMsgAny.caption || "", media);
     }
 
-    if (this.wamsg.type == MessageType.VIDEO) {
-      this.message = new VideoMessage(this.chat, anyMsg.caption || "", media);
+    if (this.waMsg.type == MessageType.VIDEO) {
+      this.message = new VideoMessage(this.chat, this.waMsgAny.caption || "", media);
     }
 
-    if (this.wamsg.type == MessageType.STICKER) {
+    if (this.waMsg.type == MessageType.STICKER) {
       this.message = new StickerMessage(this.chat, media);
     }
   }
 
-  public readInteractiveResponse() {
-    if (this.wamsg.type == MessageType.BUTTONS_RESPONSE) {
-      this.message.selected = this.wamsg.content || this.wamsg.body;
-    }
-
-    if (this.wamsg.type == MessageType.LIST_RESPONSE) {
-      this.message.selected = this.wamsg.content || this.wamsg.body;
-    }
-
-    if (this.wamsg.type == MessageType.TEMPLATE_BUTTON_REPLY) {
-      this.message.selected = this.wamsg.content || this.wamsg.body;
+  public async readLocationMessage() {
+    if (this.waMsg.type == MessageType.LOCATION) {
+      this.message = new LocationMessage(this.chat, this.waMsgAny.lat, this.waMsgAny.lng);
     }
   }
 
-  public static async Read(wpp: WPPConnect, wamsg: model.Message) {
-    const convert = new WPPMessage(wpp, wamsg);
+  public async readButtonMessage() {
+    //TODO: read button message
 
-    return await convert.read();
+    if (this.waMsg.type == MessageType.BUTTONS_RESPONSE) {
+      this.message.selected = this.waMsg.content || this.waMsg.body;
+    }
+
+    if (this.waMsg.type == MessageType.TEMPLATE_BUTTON_REPLY) {
+      this.message.selected = this.waMsg.content || this.waMsg.body;
+    }
+  }
+
+  public async readListMessage() {
+    //TODO: read list message
+
+    if (this.waMsg.type == MessageType.LIST_RESPONSE) {
+      this.message.selected = this.waMsg.content || this.waMsg.body;
+    }
+  }
+
+  public async readContactMessage() {
+    if (this.waMsg.type == MessageType.VCARD) {
+    }
+
+    if (this.waMsg.type == MessageType.MULTI_VCARD) {
+    }
+  }
+
+  public static async Read(wpp: WPPConnect, waMsg: model.Message) {
+    const convert = new WPPMessage(wpp, waMsg);
+
+    await convert.read();
+
+    return convert;
   }
 }
