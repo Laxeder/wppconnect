@@ -1,3 +1,5 @@
+import { EmptyMessage } from "rompot";
+
 import WPPConnect from "@api/WPPConnect";
 import WPPMessage from "@api/WPPMessage";
 
@@ -68,6 +70,7 @@ export default class ConfigWPPEvents {
 
         if (!isValid) return;
         if (!!!message.chat.id) return;
+        if (message instanceof EmptyMessage) return;
         if (message.chat.id.includes("status@broadcast")) return;
 
         if (this.wpp.users[message.user.id]?.name != message.user.name) {
