@@ -1,3 +1,5 @@
+import type { PollMessageUpdateType } from "../types/messages";
+
 import { EmptyMessage } from "rompot";
 
 import WPPConnect from "@api/WPPConnect";
@@ -17,6 +19,7 @@ export default class ConfigWPPEvents {
     this.configStatusUpdate();
     this.configQREvent();
     this.configOnAnyMessage();
+    this.configPollResponse();
     // this.configContactsUpdate();
     // this.configChatsUpsert();
     // this.configGroupsUpdate();
@@ -82,6 +85,22 @@ export default class ConfigWPPEvents {
         }
 
         this.wpp.ev.emit("message", message);
+      } catch (err) {
+        this.wpp.ev.emit("error", err);
+      }
+    });
+  }
+
+  public configPollResponse() {
+    this.wpp.client.onPollResponse(async (msg: PollMessageUpdateType) => {
+      try {
+        if (!!!msg) return;
+
+        const pollMessage = await WPPMessage.ReadPollResponse(this.wpp, msg);
+
+        if (!pollMessage) return;
+
+        this.wpp.ev.emit("message", pollMessage);
       } catch (err) {
         this.wpp.ev.emit("error", err);
       }

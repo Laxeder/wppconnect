@@ -235,12 +235,12 @@ export default class MessageTranspiler<M extends Message> {
     }
 
     if (type == MessageTranspilerType.Poll) {
-      const res: any = await wpp.wcb.waitCall(() => wpp.client.sendPollMessage(chat, content.name, content.choices));
+      message.id = (await wpp.wcb.waitCall(() => wpp.client.sendPollMessage(chat, content.name, content.choices)))?.id;
 
-      if (!!res && typeof res == "object") {
-        if (message instanceof PollMessage) message.secretKey = res.messageSecret;
+      if (!!message.id && message instanceof PollMessage) {
+        wpp.polls[message.id] = message;
 
-        message.id = res.id;
+        await wpp.savePolls();
       }
     }
 

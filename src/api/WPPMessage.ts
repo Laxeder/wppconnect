@@ -1,10 +1,12 @@
-import { Chat, EmptyMessage, FileMessage, ImageMessage, LocationMessage, Media, Message, StickerMessage, User, VideoMessage } from "rompot";
+import type { PollMessageUpdateType } from "../types/messages";
+
+import { Chat, EmptyMessage, FileMessage, ImageMessage, LocationMessage, Media, Message, PollOption, PollUpdateMessage, StickerMessage, User, VideoMessage } from "rompot";
 import * as model from "@wppconnect-team/wppconnect/dist/api/model/message";
 import { MessageType } from "@wppconnect-team/wppconnect";
 
 import WPPConnect from "@api/WPPConnect";
 
-import { getChatFromMessage, getID, getUserFromMessage, replaceID } from "@utils/generic";
+import { getChatFromMessage, getID, getMessageID, getUserFromMessage, replaceID } from "@utils/generic";
 
 export default class WPPMessage {
   public wpp: WPPConnect;
@@ -173,6 +175,83 @@ export default class WPPMessage {
 
     if (this.waMsg.type == MessageType.MULTI_VCARD) {
     }
+  }
+
+  public static async ReadPollResponse(wpp: WPPConnect, waMsg: PollMessageUpdateType) {
+    const msgId = getMessageID(waMsg);
+
+    const userId = getUserFromMessage(waMsg);
+
+    const chatId = getChatFromMessage(waMsg);
+
+    const chat = (await wpp.getChat(new Chat(chatId))) || new Chat(chatId);
+
+    chat.type = chatId.includes("@g") ? "group" : "pv";
+
+    const pollUpdate = new PollUpdateMessage(chat, "");
+
+    pollUpdate.user = (await wpp.getUser(new User(userId))) || new User(userId);
+
+    if (!wpp.polls.hasOwnProperty(msgId)) return pollUpdate;
+
+    const pollCreation = wpp.polls[msgId];
+
+    if (!pollCreation) return pollUpdate;
+
+    pollUpdate.text = pollCreation.text || "";
+
+    if (!!!waMsg.selectedOptions) return pollUpdate;
+
+    const votes: string[] = [];
+    const votesAlias: { [name: string]: PollOption } = {};
+
+    for (const opt of waMsg.selectedOptions) {
+      if (!!opt) votes.push(opt.name);
+    }
+
+    const nowVotes: string[] = [];
+    const oldVotes: string[] = pollCreation.getUserVotes(userId).sort();
+
+    for (const opt of pollCreation.options) {
+      votesAlias[opt.name] = opt;
+
+      if (votes.includes(opt.name)) {
+        nowVotes.push(opt.name);
+      }
+    }
+
+    let vote: PollOption | null = null;
+
+    for (const name of Object.keys(votesAlias)) {
+      if (nowVotes.length > oldVotes.length) {
+        if (oldVotes.includes(name) || !nowVotes.includes(name)) continue;
+
+        vote = votesAlias[name];
+
+        pollUpdate.action = "add";
+
+        break;
+      } else {
+        if (nowVotes.includes(name) || !oldVotes.includes(name)) continue;
+
+        vote = votesAlias[name];
+
+        pollUpdate.action = "remove";
+
+        break;
+      }
+    }
+
+    pollUpdate.selected = vote?.id || vote?.name || "";
+    pollUpdate.text = vote?.name || "";
+
+    pollCreation.setUserVotes(userId, nowVotes);
+
+    wpp.polls[pollCreation.id] = pollCreation;
+
+    await wpp.savePolls();
+
+    return pollUpdate;
   }
 
   public static async Read(wpp: WPPConnect, waMsg: model.Message) {
