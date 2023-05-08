@@ -1,8 +1,8 @@
 {
   "name": "@laxeder/wppconnect",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "wppconnection version rompot",
-  "main": "dist/index.js",
+  "main": "lib/index.js",
   "scripts": {
     "example": "ts-node-dev -r tsconfig-paths/register example/index.ts",
     "dev": "ts-node-dev -r tsconfig-paths/register example/index.ts",
