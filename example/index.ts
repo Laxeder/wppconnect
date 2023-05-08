@@ -1,6 +1,6 @@
 import Client, { Message } from "rompot";
 
-import WPPConnect from "../src/api/WPPConnect";
+import { WPPConnect } from "../src/index";
 
 import { getCommands } from "./commands";
 
