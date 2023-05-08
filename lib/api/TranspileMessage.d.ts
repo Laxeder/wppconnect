@@ -1,0 +1,33 @@
+import type { LocationMessageTranspiled, PollMessaeTranspiled, ReactionMessageTranspiled } from "../types/messages";
+import { Message } from "rompot";
+import { WAJS } from "@wppconnect-team/wppconnect";
+import { MessageTranspilerType } from "../enums/messages";
+import WPPConnect from "./WPPConnect";
+export default class MessageTranspiler<M extends Message> {
+    isGif?: boolean;
+    isViewOnce?: boolean;
+    chat: string;
+    content: any;
+    media: string;
+    quotedMsg: string;
+    options: WAJS.chat.AllMessageOptions;
+    wpp: WPPConnect;
+    message: Message;
+    type: MessageTranspilerType;
+    constructor(wpp: WPPConnect, message: M);
+    transpile(): Promise<this>;
+    transpileChat(): Promise<void>;
+    transpileContent(): Promise<void>;
+    transpileMention(): Promise<boolean>;
+    transpileMediaMessage(): Promise<boolean>;
+    transpileLocationMessage(): Promise<boolean>;
+    transpileContactMessage(): Promise<boolean>;
+    transpileReactionMessage(): Promise<boolean>;
+    transpilePollMessage(): Promise<boolean>;
+    transpileListMessage(): Promise<boolean>;
+    transpileButtonMessage(): Promise<boolean>;
+    static sendMessage(wpp: WPPConnect, message: Message): Promise<Message>;
+    static getType<T extends Message>(message: T): MessageTranspilerType.Text | MessageTranspilerType.File | MessageTranspilerType.Image | MessageTranspilerType.Video | MessageTranspilerType.Sticker | MessageTranspilerType.List | MessageTranspilerType.Button | MessageTranspilerType.Poll | MessageTranspilerType.Reaction | MessageTranspilerType.Location | MessageTranspilerType.Contact | MessageTranspilerType.ContactList;
+    static getContent<T extends MessageTranspilerType>(type: T, content: any): string | WAJS.chat.ListMessageOptions | WAJS.chat.ChatListOptions | WAJS.chat.VCardContact | ReactionMessageTranspiled | LocationMessageTranspiled | PollMessaeTranspiled;
+    static Transpile<M extends Message>(wpp: WPPConnect, message: M): Promise<MessageTranspiler<M>>;
+}

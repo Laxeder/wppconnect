@@ -1,6 +1,6 @@
 {
   "name": "@rompot/wppconnect",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "wppconnection version rompot",
   "main": "dist/index.js",
   "scripts": {
@@ -30,8 +30,11 @@
     "winston": "3.8.2"
   },
   "devDependencies": {
-    "ts-alias": "0.0.7",
+    "@types/ws": "8.5.4",
+    "compressorjs": "1.2.1",
+    "eventemitter2": "6.4.9",
     "ts-node-dev": "2.0.0",
+    "tsc-alias": "1.8.6",
     "tsconfig-paths": "4.2.0",
     "typescript": "5.0.4"
   }
