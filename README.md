@@ -28,7 +28,7 @@ import { Client } from "rompot";
 
 // Javascript
 const { WPPConnect } = require("@laxeder/wppconnect");
-const { Client, WhatsAppBot } = require("rompot");
+const { Client } = require("rompot");
 ```
 
 ## WhatsApp
