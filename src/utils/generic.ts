@@ -41,7 +41,7 @@ export function isPvId(id: string): boolean {
 }
 
 /** @returns ID do usuário que enviou a mensagem */
-export function getUserFromMessage(message: Message) {
+export function getUserFromMessage(message: any) {
   if (typeof message.sender == "string") {
     var id = `${message.sender}`;
   } else if (typeof message.sender.id == "string") {
@@ -54,7 +54,7 @@ export function getUserFromMessage(message: Message) {
 }
 
 /** @returns ID da sala de bate-papo que foi enviado a mensagem */
-export function getChatFromMessage(message: Message) {
+export function getChatFromMessage(message: any) {
   const chat: any = message.chatId;
 
   if (typeof chat == "string") {
@@ -64,4 +64,17 @@ export function getChatFromMessage(message: Message) {
   }
 
   return replaceID(id);
+}
+
+/** @returns ID da mensagem */
+export function getMessageID(message: any) {
+  const msgId: any = message.msgId;
+
+  if (typeof msgId == "string") {
+    var id = `${msgId}`;
+  } else {
+    var id = `${msgId?._serialized}`;
+  }
+
+  return id;
 }
