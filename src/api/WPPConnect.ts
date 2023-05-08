@@ -41,6 +41,7 @@ export default class WPPConnect implements IBot {
   });
 
   public auth: IAuth = new MultiFileAuthState("./session");
+  public tokenStore: IAuth = new WPPFileAuth({ path: "session" });
   public config: WPPConnectOption = DEFAULT_CLIENT_OPTIONS;
   public configEvents: ConfigWPPEvents = new ConfigWPPEvents(this);
 
@@ -58,13 +59,14 @@ export default class WPPConnect implements IBot {
   public async connect(auth?: string | IAuth): Promise<void> {
     return await new Promise(async (resolve, reject) => {
       try {
-        if (!!!auth) auth = String(this.config.session || "");
+        if (!!!auth) auth = String(this.config.folderNameToken || "");
 
         if (typeof auth == "string") {
-          this.auth = new WPPFileAuth({ path: this.config.folderNameToken });
-        } else {
-          this.auth = auth;
+          auth = new WPPFileAuth({ path: auth });
         }
+
+        this.tokenStore = auth;
+        this.auth = new MultiFileAuthState(`${this.config.folderNameToken}/${this.config.session}`);
 
         const tokenStore = getTokenStore(this.auth);
 
