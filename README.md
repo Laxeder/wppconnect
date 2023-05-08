@@ -23,11 +23,11 @@ Importando API
 
 ```ts
 // TypeScript
-import { WPPConnect } from "@rompot/wppconnect";
+import { WPPConnect } from "@laxeder/wppconnect";
 import { Client } from "rompot";
 
 // Javascript
-const { WPPConnect } = require("@rompot/wppconnect");
+const { WPPConnect } = require("@laxeder/wppconnect");
 const { Client, WhatsAppBot } = require("rompot");
 ```
 
