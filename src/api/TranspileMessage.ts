@@ -236,12 +236,6 @@ export default class MessageTranspiler<M extends Message> {
 
     if (type == MessageTranspilerType.Poll) {
       message.id = (await wpp.wcb.waitCall(() => wpp.client.sendPollMessage(chat, content.name, content.choices)))?.id;
-
-      if (!!message.id && message instanceof PollMessage) {
-        wpp.polls[message.id] = message;
-
-        await wpp.savePolls();
-      }
     }
 
     if (type == MessageTranspilerType.Contact) {
