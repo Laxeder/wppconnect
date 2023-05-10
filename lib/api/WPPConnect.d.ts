@@ -20,6 +20,9 @@ export default class WPPConnect implements IBot {
     polls: {
         [id: string]: PollMessage;
     };
+    sendedMessages: {
+        [id: string]: Message;
+    };
     constructor(config?: Partial<WPPConnectOption>);
     connect(auth?: string | IAuth): Promise<void>;
     reconnect(alert?: boolean): Promise<any>;
@@ -40,6 +43,11 @@ export default class WPPConnect implements IBot {
      */
     savePolls(polls?: any): Promise<void>;
     /**
+     * * Salva as mensagens enviadas salvas
+     * @param messages Mensagens enviadas
+     */
+    saveSendedMessages(messages?: any): Promise<void>;
+    /**
      * * Obtem os chats salvos
      */
     readChats(): Promise<void>;
@@ -51,6 +59,10 @@ export default class WPPConnect implements IBot {
      * * Obtem as mensagem de enquete salvas
      */
     readPolls(): Promise<void>;
+    /**
+     * * Obtem as mensagem enviadas salvas
+     */
+    readSendedMessages(): Promise<void>;
     /**
      * * Lê o chat
      * @param chat Sala de bate-papo
@@ -112,6 +124,16 @@ export default class WPPConnect implements IBot {
     setBotDescription(description: string): Promise<void>;
     getBotProfile(): Promise<Buffer>;
     setBotProfile(image: Buffer): Promise<void>;
+    /**
+     * * Adiciona uma mensagem na lista de mensagens enviadas
+     * @param message Mensagem que será adicionada
+     */
+    addSendedMessage(message: Message): Promise<void>;
+    /**
+     * * Remove uma mensagem da lista de mensagens enviadas
+     * @param message Mensagem que será removida
+     */
+    removeMessageIgnore(message: Message): Promise<void>;
     readMessage(message: Message): Promise<void>;
     removeMessage(message: Message): Promise<void>;
     deleteMessage(message: Message): Promise<void>;

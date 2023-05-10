@@ -1,6 +1,6 @@
 {
   "name": "@laxeder/wppconnect",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "wppconnection version rompot",
   "main": "lib/index.js",
   "scripts": {
