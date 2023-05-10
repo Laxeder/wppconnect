@@ -2,6 +2,7 @@ import type { WPPConnectOption } from "../types/default";
 import type { WAChats, WAUsers } from "../types/modules";
 
 import {
+  AudioMessage,
   BotEvents,
   Chat,
   ChatStatus,
@@ -51,6 +52,7 @@ export default class WPPConnect implements IBot {
   public users: WAUsers = {};
   public chats: WAChats = {};
   public polls: { [id: string]: PollMessage } = {};
+  public sendedMessages: { [id: string]: Message } = {};
 
   constructor(config?: Partial<WPPConnectOption>) {
     this.config = { ...DEFAULT_CLIENT_OPTIONS, ...config };
@@ -132,6 +134,14 @@ export default class WPPConnect implements IBot {
   }
 
   /**
+   * * Salva as mensagens enviadas salvas
+   * @param messages Mensagens enviadas
+   */
+  public async saveSendedMessages(messages: any = this.sendedMessages) {
+    await this.auth.set(`sendedMessages`, messages);
+  }
+
+  /**
    * * Obtem os chats salvos
    */
   public async readChats() {
@@ -183,6 +193,21 @@ export default class WPPConnect implements IBot {
       if (!!!poll) continue;
 
       this.polls[id] = PollMessage.fromJSON(poll);
+    }
+  }
+
+  /**
+   * * Obtem as mensagem enviadas salvas
+   */
+  public async readSendedMessages() {
+    const messages: WAUsers = (await this.auth.get(`sendedMessages`)) || {};
+
+    for (const id of Object.keys(messages || {})) {
+      const msg = messages[id];
+
+      if (!!!msg) continue;
+
+      this.sendedMessages[id] = injectJSON(msg, new Message("", ""));
     }
   }
 
@@ -595,6 +620,32 @@ export default class WPPConnect implements IBot {
 
   //! ******************************* MESSAGE *******************************
 
+  /**
+   * * Adiciona uma mensagem na lista de mensagens enviadas
+   * @param message Mensagem que será adicionada
+   */
+  public async addSendedMessage(message: Message) {
+    if (typeof message != "object" || !message || !!!message.id) return;
+
+    message.apiSend = true;
+
+    this.sendedMessages[message.id] = message;
+
+    await this.saveSendedMessages();
+  }
+
+  /**
+   * * Remove uma mensagem da lista de mensagens enviadas
+   * @param message Mensagem que será removida
+   */
+  public async removeMessageIgnore(message: Message) {
+    if (this.sendedMessages.hasOwnProperty(message.id)) {
+      delete this.sendedMessages[message.id];
+    }
+
+    await this.saveSendedMessages();
+  }
+
   public async readMessage(message: Message): Promise<void> {
     return await this.changeChatStatus(message.chat, "reading");
   }
@@ -622,18 +673,18 @@ export default class WPPConnect implements IBot {
   public async send(content: Message): Promise<Message> {
     const msgRes = await MessageTranspiler.sendMessage(this, content);
 
-    //TODO: Add audio message
-    // if (msgRes instanceof AudioMessage) {
-    if (false) {
-      await this.client.stopRecoring(getID(msgRes.chat.id));
-    } else {
-      await this.client.stopTyping(getID(msgRes.chat.id));
-    }
+    await this.addSendedMessage(msgRes);
 
-    if (msgRes instanceof PollMessage && content instanceof PollMessage) {
+    if (msgRes instanceof PollMessage) {
       this.polls[msgRes.id] = msgRes;
 
       await this.savePolls(this.polls);
+    }
+
+    if (msgRes instanceof AudioMessage) {
+      await this.client.stopRecoring(getID(msgRes.chat.id));
+    } else {
+      await this.client.stopTyping(getID(msgRes.chat.id));
     }
 
     return msgRes;

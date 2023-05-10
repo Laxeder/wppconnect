@@ -104,8 +104,8 @@ export default class WPPMessage {
     await this.readMentionMessage();
 
     this.message.id = this.waMsg.id;
-    this.message.apiSend = this.message.id.includes("true");
     this.message.fromMe = getID(this.waMsg.from) == getID(this.wpp.id);
+    this.message.apiSend = this.wpp.sendedMessages.hasOwnProperty(this.waMsg.id);
 
     this.message.timestamp = this.waMsg.timestamp;
     this.message.text = !!this.message.text ? this.message.text : this.waMsg.body || this.waMsg.content || "";
